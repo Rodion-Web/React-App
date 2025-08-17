@@ -13,6 +13,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState(null);
+  const [syncStatus, setSyncStatus] = useState("local"); // local, cloud, error
 
   // Проверяем авторизацию при загрузке
   useEffect(() => {
@@ -38,28 +39,38 @@ function App() {
         setTasks(localTasks);
       }
 
-      // Затем синхронизируем с сервером
-      const serverTasks = await TaskService.getUserTasks(userEmail);
+      // Затем пытаемся синхронизировать с сервером
+      try {
+        const serverTasks = await TaskService.getUserTasks(userEmail);
 
-      if (Object.keys(serverTasks).length > 0) {
-        setTasks(serverTasks);
-        // Сохраняем синхронизированные задачи локально
-        localStorage.setItem(`tasks_${userEmail}`, JSON.stringify(serverTasks));
-      } else if (Object.keys(localTasks).length > 0) {
-        // Если на сервере нет задач, но есть локально - загружаем локальные
-        setTasks(localTasks);
+        if (serverTasks && Object.keys(serverTasks).length > 0) {
+          setTasks(serverTasks);
+          // Сохраняем синхронизированные задачи локально
+          localStorage.setItem(
+            `tasks_${userEmail}`,
+            JSON.stringify(serverTasks)
+          );
+          setSyncStatus("cloud");
+        } else if (Object.keys(localTasks).length > 0) {
+          // Если на сервере нет задач, но есть локально - загружаем локальные
+          setTasks(localTasks);
+          setSyncStatus("local");
+        }
+
+        // Обновляем время последней синхронизации
+        const syncStatusTime = await TaskService.checkSyncStatus(userEmail);
+        setLastSyncTime(syncStatusTime);
+      } catch (serverError) {
+        console.log("Server sync failed, using local tasks:", serverError);
+        // В случае ошибки сервера используем локальные задачи
+        if (Object.keys(localTasks).length > 0) {
+          setTasks(localTasks);
+        }
+        setSyncStatus("error");
       }
-
-      // Обновляем время последней синхронизации
-      const syncStatus = await TaskService.checkSyncStatus(userEmail);
-      setLastSyncTime(syncStatus);
     } catch (error) {
       console.error("Failed to load tasks:", error);
-      // В случае ошибки загружаем локальные задачи
-      const savedTasks = localStorage.getItem(`tasks_${userEmail}`);
-      if (savedTasks) {
-        setTasks(JSON.parse(savedTasks));
-      }
+      setSyncStatus("error");
     } finally {
       setIsSyncing(false);
     }
@@ -71,10 +82,13 @@ function App() {
       // Сохраняем локально для быстрого доступа
       localStorage.setItem(`tasks_${userEmail}`, JSON.stringify(tasksData));
 
-      // Синхронизируем с сервером в фоне
-      await syncTasksWithServer(userEmail, tasksData);
+      // Синхронизируем с сервером в фоне (без блокировки)
+      syncTasksWithServer(userEmail, tasksData).catch((error) => {
+        console.log("Background sync failed:", error);
+        setSyncStatus("error");
+      });
     } catch (error) {
-      console.error("Failed to save tasks:", error);
+      console.error("Failed to save tasks locally:", error);
     }
   };
 
@@ -98,21 +112,29 @@ function App() {
 
           if (!serverTask) {
             // Добавляем новую задачу на сервер
-            TaskService.addTask(userEmail, dateKey, localTask);
+            TaskService.addTask(userEmail, dateKey, localTask).catch(
+              (error) => {
+                console.log("Failed to add task to server:", error);
+              }
+            );
           } else if (serverTask.completed !== localTask.completed) {
             // Обновляем статус выполнения
             TaskService.updateTask(serverTask.id, {
               completed: localTask.completed,
+            }).catch((error) => {
+              console.log("Failed to update task on server:", error);
             });
           }
         });
       });
 
       // Обновляем время синхронизации
-      const syncStatus = await TaskService.checkSyncStatus(userEmail);
-      setLastSyncTime(syncStatus);
+      const syncStatusTime = await TaskService.checkSyncStatus(userEmail);
+      setLastSyncTime(syncStatusTime);
+      setSyncStatus("cloud");
     } catch (error) {
       console.error("Failed to sync with server:", error);
+      setSyncStatus("error");
     }
   };
 
@@ -136,6 +158,7 @@ function App() {
     setSelectedDate(null);
     setIsModalOpen(false);
     setLastSyncTime(null);
+    setSyncStatus("local");
   };
 
   const addTask = (date, task) => {
@@ -185,6 +208,20 @@ function App() {
     return <Auth onLogin={handleLogin} />;
   }
 
+  // Получаем статус синхронизации для отображения
+  const getSyncStatusText = () => {
+    switch (syncStatus) {
+      case "cloud":
+        return "☁️ Облачная синхронизация";
+      case "local":
+        return "💾 Локальное сохранение";
+      case "error":
+        return "⚠️ Ошибка синхронизации";
+      default:
+        return "🔄 Проверка статуса";
+    }
+  };
+
   return (
     <div className="App">
       <header className="App-header">
@@ -204,7 +241,7 @@ function App() {
                       ? `Обновлено: ${new Date(lastSyncTime).toLocaleString(
                           "ru-RU"
                         )}`
-                      : "Не синхронизировано"}
+                      : getSyncStatusText()}
                   </span>
                 )}
                 <button
@@ -244,6 +281,28 @@ function App() {
           />
         )}
       </main>
+
+      {/* Информация о режиме работы */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: "20px",
+          right: "20px",
+          background:
+            syncStatus === "cloud"
+              ? "rgba(76, 175, 80, 0.9)"
+              : syncStatus === "error"
+              ? "rgba(244, 67, 54, 0.9)"
+              : "rgba(0,0,0,0.7)",
+          color: "white",
+          padding: "10px 15px",
+          borderRadius: "20px",
+          fontSize: "12px",
+          zIndex: 1000,
+        }}
+      >
+        {getSyncStatusText()}
+      </div>
     </div>
   );
 }

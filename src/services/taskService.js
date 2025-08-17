@@ -12,24 +12,32 @@ export class TaskService {
 
       if (error) {
         console.error("Error fetching tasks:", error);
+        // Если таблица не существует, возвращаем пустой объект
+        if (error.code === "42P01") {
+          // Table doesn't exist
+          console.log("Tasks table does not exist yet");
+          return {};
+        }
         throw error;
       }
 
       // Группируем задачи по дате
       const tasksByDate = {};
-      data.forEach((task) => {
-        const dateKey = task.date;
-        if (!tasksByDate[dateKey]) {
-          tasksByDate[dateKey] = [];
-        }
-        tasksByDate[dateKey].push({
-          id: task.id,
-          text: task.text,
-          priority: task.priority,
-          completed: task.completed,
-          createdAt: task.created_at,
+      if (data && Array.isArray(data)) {
+        data.forEach((task) => {
+          const dateKey = task.date;
+          if (!tasksByDate[dateKey]) {
+            tasksByDate[dateKey] = [];
+          }
+          tasksByDate[dateKey].push({
+            id: task.id,
+            text: task.text,
+            priority: task.priority,
+            completed: task.completed,
+            createdAt: task.created_at,
+          });
         });
-      });
+      }
 
       return tasksByDate;
     } catch (error) {
@@ -105,40 +113,6 @@ export class TaskService {
     }
   }
 
-  // Синхронизировать локальные задачи с сервером
-  static async syncTasks(userEmail, localTasks) {
-    try {
-      // Получаем задачи с сервера
-      const serverTasks = await this.getUserTasks(userEmail);
-
-      // Сравниваем и синхронизируем
-      const mergedTasks = { ...serverTasks };
-
-      Object.keys(localTasks).forEach((dateKey) => {
-        if (!mergedTasks[dateKey]) {
-          mergedTasks[dateKey] = [];
-        }
-
-        localTasks[dateKey].forEach((localTask) => {
-          const existingTask = mergedTasks[dateKey].find(
-            (task) =>
-              task.text === localTask.text &&
-              task.createdAt === localTask.createdAt
-          );
-
-          if (!existingTask) {
-            mergedTasks[dateKey].push(localTask);
-          }
-        });
-      });
-
-      return mergedTasks;
-    } catch (error) {
-      console.error("Failed to sync tasks:", error);
-      return localTasks;
-    }
-  }
-
   // Проверить статус синхронизации
   static async checkSyncStatus(userEmail) {
     try {
@@ -158,6 +132,24 @@ export class TaskService {
     } catch (error) {
       console.error("Failed to check sync status:", error);
       return null;
+    }
+  }
+
+  // Проверить подключение к базе данных
+  static async testConnection() {
+    try {
+      const { error } = await supabase.from("tasks").select("count").limit(1);
+
+      if (error) {
+        console.log("Database connection test failed:", error.message);
+        return false;
+      }
+
+      console.log("Database connection successful");
+      return true;
+    } catch (error) {
+      console.log("Database connection test failed:", error.message);
+      return false;
     }
   }
 }

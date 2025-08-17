@@ -95,6 +95,11 @@ const Calendar = ({ tasks, onDateClick, onDeleteTask }) => {
     return tasksForDate.filter((task) => !task.completed).length;
   };
 
+  const getTotalTasksCount = (date) => {
+    const tasksForDate = getTasksForDate(date);
+    return tasksForDate.length;
+  };
+
   const days = getDaysArray();
 
   return (
@@ -124,58 +129,56 @@ const Calendar = ({ tasks, onDateClick, onDeleteTask }) => {
         ))}
 
         {/* Дни месяца */}
-        {days.map((day, index) => (
-          <div
-            key={index}
-            className={`calendar-day ${!day ? "empty" : ""} ${
-              isToday(day) ? "today" : ""
-            }`}
-            onClick={() => day && onDateClick(day)}
-          >
-            {day && (
-              <>
-                <span className="day-number">{day.getDate()}</span>
-                <div className="tasks-preview">
-                  {/* Показываем активные задачи */}
-                  {getTasksForDate(day)
-                    .filter((task) => !task.completed)
-                    .slice(0, 2)
-                    .map((task, taskIndex) => (
-                      <div key={taskIndex} className="task-preview active">
-                        {task.text}
-                      </div>
-                    ))}
+        {days.map((day, index) => {
+          const totalTasks = getTotalTasksCount(day);
+          const activeTasks = getActiveTasksCount(day);
+          const completedTasks = getCompletedTasksCount(day);
 
-                  {/* Показываем выполненные задачи */}
-                  {getTasksForDate(day)
-                    .filter((task) => task.completed)
-                    .slice(0, 1)
-                    .map((task, taskIndex) => (
-                      <div
-                        key={`completed-${taskIndex}`}
-                        className="task-preview completed"
-                      >
-                        ✓ {task.text}
-                      </div>
-                    ))}
+          return (
+            <div
+              key={index}
+              className={`calendar-day ${!day ? "empty" : ""} ${
+                isToday(day) ? "today" : ""
+              }`}
+              onClick={() => day && onDateClick(day)}
+            >
+              {day && (
+                <>
+                  <span className="day-number">{day.getDate()}</span>
 
-                  {/* Показываем счетчики */}
-                  {getActiveTasksCount(day) > 0 && (
-                    <div className="tasks-counter active">
-                      {getActiveTasksCount(day)} активных
+                  {/* Отображение количества задач */}
+                  {totalTasks > 0 && (
+                    <div className="tasks-count-container">
+                      {/* Общее количество задач */}
+                      <div className="total-tasks-count">
+                        {totalTasks}{" "}
+                        {totalTasks === 1
+                          ? "задача"
+                          : totalTasks < 5
+                          ? "задачи"
+                          : "задач"}
+                      </div>
+
+                      {/* Детализация по статусу */}
+                      <div className="tasks-details">
+                        {activeTasks > 0 && (
+                          <div className="task-count active">
+                            {activeTasks} активн.
+                          </div>
+                        )}
+                        {completedTasks > 0 && (
+                          <div className="task-count completed">
+                            {completedTasks} выполн.
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
-
-                  {getCompletedTasksCount(day) > 0 && (
-                    <div className="tasks-counter completed">
-                      {getCompletedTasksCount(day)} выполнено
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        ))}
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

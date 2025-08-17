@@ -109,63 +109,56 @@
     margin-bottom: 8px;
 }
 
-.tasks-preview {
+/* Новые стили для отображения количества задач */
+.tasks-count-container {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    justify-content: center;
+}
+
+.total-tasks-count {
+    background: #667eea;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.tasks-details {
     display: flex;
     flex-direction: column;
     gap: 2px;
 }
 
-.task-preview {
-    background: #4ecdc4;
-    color: white;
+.task-count {
     padding: 2px 6px;
-    border-radius: 10px;
-    font-size: 10px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-}
-
-.task-preview.active {
-    background: #4ecdc4;
-    color: white;
-}
-
-.task-preview.completed {
-    background: #28a745;
-    color: white;
-    font-style: italic;
-}
-
-.tasks-counter {
-    padding: 1px 4px;
     border-radius: 8px;
     font-size: 9px;
     text-align: center;
-    font-weight: 600;
-    margin-top: 2px;
+    font-weight: 500;
+    line-height: 1.2;
 }
 
-.tasks-counter.active {
+.task-count.active {
     background: #e3f2fd;
     color: #1976d2;
 }
 
-.tasks-counter.completed {
+.task-count.completed {
     background: #e8f5e8;
     color: #2e7d32;
 }
 
+/* Убираем старые стили */
+.task-preview,
+.tasks-counter,
 .more-tasks {
-    background: #ff6b6b;
-    color: white;
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-size: 10px;
-    text-align: center;
-    font-weight: 600;
+    display: none;
 }
 
 /* Адаптивность */
@@ -194,13 +187,13 @@
         font-size: 16px;
     }
 
-    .task-preview {
-        font-size: 9px;
-        padding: 1px 4px;
+    .total-tasks-count {
+        font-size: 10px;
+        padding: 3px 6px;
     }
 
-    .tasks-counter {
+    .task-count {
         font-size: 8px;
-        padding: 1px 3px;
+        padding: 1px 4px;
     }
 }

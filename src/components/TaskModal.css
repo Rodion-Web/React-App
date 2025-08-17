@@ -170,6 +170,12 @@
     transform: translateX(5px);
 }
 
+.task-item.completed {
+    background: #f0f8f0;
+    border-left-color: #28a745;
+    opacity: 0.8;
+}
+
 .task-content {
     flex: 1;
     display: flex;
@@ -177,10 +183,54 @@
     gap: 5px;
 }
 
+.task-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.task-toggle {
+    background: none;
+    border: 2px solid #ddd;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    color: #666;
+    flex-shrink: 0;
+}
+
+.task-toggle:hover {
+    border-color: #4ecdc4;
+    background: #f0f9f8;
+}
+
+.task-toggle.completed {
+    background: #28a745;
+    border-color: #28a745;
+    color: white;
+}
+
+.task-toggle.completed:hover {
+    background: #218838;
+    border-color: #218838;
+}
+
 .task-text {
     color: #333;
     font-size: 14px;
     word-break: break-word;
+    flex: 1;
+}
+
+.task-text.completed {
+    text-decoration: line-through;
+    color: #666;
 }
 
 .task-priority {
@@ -236,5 +286,15 @@
     .priority-select {
         font-size: 16px;
         /* Предотвращает зум на iOS */
+    }
+
+    .task-header {
+        gap: 8px;
+    }
+
+    .task-toggle {
+        width: 22px;
+        height: 22px;
+        font-size: 12px;
     }
 }

@@ -37,6 +37,16 @@ function App() {
     }));
   };
 
+  const toggleTask = (date, taskIndex) => {
+    const dateKey = date.toISOString().split("T")[0];
+    setTasks((prev) => ({
+      ...prev,
+      [dateKey]: prev[dateKey].map((task, index) =>
+        index === taskIndex ? { ...task, completed: !task.completed } : task
+      ),
+    }));
+  };
+
   const openTaskModal = (date) => {
     setSelectedDate(date);
     setIsModalOpen(true);
@@ -64,6 +74,7 @@ function App() {
             onClose={closeTaskModal}
             onAddTask={addTask}
             onDeleteTask={deleteTask}
+            onToggleTask={toggleTask}
             existingTasks={
               selectedDate
                 ? tasks[selectedDate.toISOString().split("T")[0]] || []

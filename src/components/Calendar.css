@@ -128,6 +128,36 @@
     max-width: 100%;
 }
 
+.task-preview.active {
+    background: #4ecdc4;
+    color: white;
+}
+
+.task-preview.completed {
+    background: #28a745;
+    color: white;
+    font-style: italic;
+}
+
+.tasks-counter {
+    padding: 1px 4px;
+    border-radius: 8px;
+    font-size: 9px;
+    text-align: center;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.tasks-counter.active {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.tasks-counter.completed {
+    background: #e8f5e8;
+    color: #2e7d32;
+}
+
 .more-tasks {
     background: #ff6b6b;
     color: white;
@@ -167,5 +197,10 @@
     .task-preview {
         font-size: 9px;
         padding: 1px 4px;
+    }
+
+    .tasks-counter {
+        font-size: 8px;
+        padding: 1px 3px;
     }
 }

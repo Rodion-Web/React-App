@@ -7,6 +7,7 @@ const TaskModal = ({
   onAddTask,
   existingTasks,
   onDeleteTask,
+  onToggleTask,
 }) => {
   const [newTask, setNewTask] = useState("");
   const [taskPriority, setTaskPriority] = useState("medium");
@@ -63,6 +64,10 @@ const TaskModal = ({
     }
   };
 
+  const handleToggleTask = (taskIndex) => {
+    onToggleTask(date, taskIndex);
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -117,11 +122,32 @@ const TaskModal = ({
               existingTasks.map((task, index) => (
                 <div
                   key={task.id}
-                  className="task-item"
+                  className={`task-item ${task.completed ? "completed" : ""}`}
                   style={{ borderLeftColor: getPriorityColor(task.priority) }}
                 >
                   <div className="task-content">
-                    <span className="task-text">{task.text}</span>
+                    <div className="task-header">
+                      <button
+                        className={`task-toggle ${
+                          task.completed ? "completed" : ""
+                        }`}
+                        onClick={() => handleToggleTask(index)}
+                        title={
+                          task.completed
+                            ? "Отметить как невыполненную"
+                            : "Отметить как выполненную"
+                        }
+                      >
+                        {task.completed ? "✓" : "○"}
+                      </button>
+                      <span
+                        className={`task-text ${
+                          task.completed ? "completed" : ""
+                        }`}
+                      >
+                        {task.text}
+                      </span>
+                    </div>
                     <span className="task-priority">
                       {getPriorityText(task.priority)}
                     </span>

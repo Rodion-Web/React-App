@@ -85,6 +85,16 @@ const Calendar = ({ tasks, onDateClick, onDeleteTask }) => {
     return tasks[dateKey] || [];
   };
 
+  const getCompletedTasksCount = (date) => {
+    const tasksForDate = getTasksForDate(date);
+    return tasksForDate.filter((task) => task.completed).length;
+  };
+
+  const getActiveTasksCount = (date) => {
+    const tasksForDate = getTasksForDate(date);
+    return tasksForDate.filter((task) => !task.completed).length;
+  };
+
   const days = getDaysArray();
 
   return (
@@ -126,16 +136,39 @@ const Calendar = ({ tasks, onDateClick, onDeleteTask }) => {
               <>
                 <span className="day-number">{day.getDate()}</span>
                 <div className="tasks-preview">
+                  {/* Показываем активные задачи */}
                   {getTasksForDate(day)
+                    .filter((task) => !task.completed)
                     .slice(0, 2)
                     .map((task, taskIndex) => (
-                      <div key={taskIndex} className="task-preview">
+                      <div key={taskIndex} className="task-preview active">
                         {task.text}
                       </div>
                     ))}
-                  {getTasksForDate(day).length > 2 && (
-                    <div className="more-tasks">
-                      +{getTasksForDate(day).length - 2}
+
+                  {/* Показываем выполненные задачи */}
+                  {getTasksForDate(day)
+                    .filter((task) => task.completed)
+                    .slice(0, 1)
+                    .map((task, taskIndex) => (
+                      <div
+                        key={`completed-${taskIndex}`}
+                        className="task-preview completed"
+                      >
+                        ✓ {task.text}
+                      </div>
+                    ))}
+
+                  {/* Показываем счетчики */}
+                  {getActiveTasksCount(day) > 0 && (
+                    <div className="tasks-counter active">
+                      {getActiveTasksCount(day)} активных
+                    </div>
+                  )}
+
+                  {getCompletedTasksCount(day) > 0 && (
+                    <div className="tasks-counter completed">
+                      {getCompletedTasksCount(day)} выполнено
                     </div>
                   )}
                 </div>

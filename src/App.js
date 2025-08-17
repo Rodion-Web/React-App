@@ -3,6 +3,7 @@ import "./App.css";
 import Calendar from "./components/Calendar";
 import TaskModal from "./components/TaskModal";
 import Auth from "./components/Auth";
+import { TaskService } from "./services/taskService";
 
 function App() {
   const [tasks, setTasks] = useState({});
@@ -10,6 +11,8 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState(null);
 
   // Проверяем авторизацию при загрузке
   useEffect(() => {
@@ -22,22 +25,98 @@ function App() {
     }
   }, []);
 
-  // Загружаем задачи пользователя
-  const loadUserTasks = (userEmail) => {
-    const savedTasks = localStorage.getItem(`tasks_${userEmail}`);
-    if (savedTasks) {
-      setTasks(JSON.parse(savedTasks));
-    } else {
-      setTasks({});
+  // Загружаем задачи пользователя с синхронизацией
+  const loadUserTasks = async (userEmail) => {
+    try {
+      setIsSyncing(true);
+
+      // Сначала загружаем из localStorage для быстрого отображения
+      const savedTasks = localStorage.getItem(`tasks_${userEmail}`);
+      const localTasks = savedTasks ? JSON.parse(savedTasks) : {};
+
+      if (Object.keys(localTasks).length > 0) {
+        setTasks(localTasks);
+      }
+
+      // Затем синхронизируем с сервером
+      const serverTasks = await TaskService.getUserTasks(userEmail);
+
+      if (Object.keys(serverTasks).length > 0) {
+        setTasks(serverTasks);
+        // Сохраняем синхронизированные задачи локально
+        localStorage.setItem(`tasks_${userEmail}`, JSON.stringify(serverTasks));
+      } else if (Object.keys(localTasks).length > 0) {
+        // Если на сервере нет задач, но есть локально - загружаем локальные
+        setTasks(localTasks);
+      }
+
+      // Обновляем время последней синхронизации
+      const syncStatus = await TaskService.checkSyncStatus(userEmail);
+      setLastSyncTime(syncStatus);
+    } catch (error) {
+      console.error("Failed to load tasks:", error);
+      // В случае ошибки загружаем локальные задачи
+      const savedTasks = localStorage.getItem(`tasks_${userEmail}`);
+      if (savedTasks) {
+        setTasks(JSON.parse(savedTasks));
+      }
+    } finally {
+      setIsSyncing(false);
     }
   };
 
-  // Сохраняем задачи пользователя
-  const saveUserTasks = (userEmail, tasksData) => {
-    localStorage.setItem(`tasks_${userEmail}`, JSON.stringify(tasksData));
+  // Сохраняем задачи локально и на сервере
+  const saveUserTasks = async (userEmail, tasksData) => {
+    try {
+      // Сохраняем локально для быстрого доступа
+      localStorage.setItem(`tasks_${userEmail}`, JSON.stringify(tasksData));
+
+      // Синхронизируем с сервером в фоне
+      await syncTasksWithServer(userEmail, tasksData);
+    } catch (error) {
+      console.error("Failed to save tasks:", error);
+    }
   };
 
-  // Сохраняем задачи в localStorage при изменении
+  // Синхронизация с сервером
+  const syncTasksWithServer = async (userEmail, tasksData) => {
+    try {
+      // Получаем текущие задачи с сервера
+      const serverTasks = await TaskService.getUserTasks(userEmail);
+
+      // Сравниваем и обновляем
+      Object.keys(tasksData).forEach((dateKey) => {
+        const localTasksForDate = tasksData[dateKey] || [];
+        const serverTasksForDate = serverTasks[dateKey] || [];
+
+        localTasksForDate.forEach((localTask) => {
+          const serverTask = serverTasksForDate.find(
+            (task) =>
+              task.text === localTask.text &&
+              task.createdAt === localTask.createdAt
+          );
+
+          if (!serverTask) {
+            // Добавляем новую задачу на сервер
+            TaskService.addTask(userEmail, dateKey, localTask);
+          } else if (serverTask.completed !== localTask.completed) {
+            // Обновляем статус выполнения
+            TaskService.updateTask(serverTask.id, {
+              completed: localTask.completed,
+            });
+          }
+        });
+      });
+
+      // Обновляем время синхронизации
+      const syncStatus = await TaskService.checkSyncStatus(userEmail);
+      setLastSyncTime(syncStatus);
+    } catch (error) {
+      console.error("Failed to sync with server:", error);
+    }
+  };
+
+  // Сохраняем задачи в localStorage и на сервере при изменении
   useEffect(() => {
     if (currentUser && Object.keys(tasks).length > 0) {
       saveUserTasks(currentUser.email, tasks);
@@ -56,6 +135,7 @@ function App() {
     setTasks({});
     setSelectedDate(null);
     setIsModalOpen(false);
+    setLastSyncTime(null);
   };
 
   const addTask = (date, task) => {
@@ -94,6 +174,12 @@ function App() {
     setSelectedDate(null);
   };
 
+  const handleManualSync = async () => {
+    if (currentUser) {
+      await loadUserTasks(currentUser.email);
+    }
+  };
+
   // Если пользователь не авторизован, показываем форму входа
   if (!isAuthenticated) {
     return <Auth onLogin={handleLogin} />;
@@ -105,9 +191,32 @@ function App() {
         <div className="header-content">
           <h1>Календарь задач</h1>
           <div className="user-section">
-            <span className="welcome-text">
-              Добро пожаловать, {currentUser.email}
-            </span>
+            <div className="user-info">
+              <span className="welcome-text">
+                Добро пожаловать, {currentUser.email}
+              </span>
+              <div className="sync-info">
+                {isSyncing ? (
+                  <span className="sync-status syncing">Синхронизация...</span>
+                ) : (
+                  <span className="sync-status">
+                    {lastSyncTime
+                      ? `Обновлено: ${new Date(lastSyncTime).toLocaleString(
+                          "ru-RU"
+                        )}`
+                      : "Не синхронизировано"}
+                  </span>
+                )}
+                <button
+                  onClick={handleManualSync}
+                  className="sync-button"
+                  disabled={isSyncing}
+                  title="Обновить синхронизацию"
+                >
+                  🔄
+                </button>
+              </div>
+            </div>
             <button onClick={handleLogout} className="header-logout-button">
               Выйти
             </button>
